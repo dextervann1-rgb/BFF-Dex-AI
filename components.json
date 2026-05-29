@@ -1,4 +1,42 @@
-{
+// ===== VERIFIED PROJECTS REGISTRY ===== //
+// Only add: legal entities, contract addresses, actions you control
+// DO NOT add: unverified collabs, person names, unconfirmed numbers
+
+export const PROJECTS = {
+  MASHABAK: {
+      name: 'MaShabak Labs LLC',
+          type: 'LLC',
+              domain: 'MaShabak.io',
+                  wallet: process.env.KINGDOM_WALLET,
+                      status: 'active'
+                        },
+                          TRUSTDEX: {
+                              name: 'TrustDEX LLC',
+                                  type: 'Exchange',
+                                      token: 'TOKENS.TDT.addr', 
+                                          status: 'active'
+                                            },
+                                              VANNAI: {
+                                                  name: 'VannAI',
+                                                      type: 'AI_Products',
+                                                          token: 'TOKENS.VAL.addr',
+                                                              products: ['crypto_trading_tool', 'entrepreneur_assistant'],
+                                                                  status: 'development'
+                                                                    },
+                                                                      VANNCON: {
+                                                                          name: 'VannCon Wealth Summit',
+                                                                              type: 'Event',
+                                                                                  target_attendees: 500,
+                                                                                      status: 'planning'
+                                                                                        },
+                                                                                          OHIO44143: {
+                                                                                              name: 'OH.io^44143',
+                                                                                                  type: 'Real Estate Portal',
+                                                                                                      focus: ['Cleveland'],
+                                                                                                          status: 'planning'
+                                                                                                            }
+                                                                                                            };
+                                                                                                            {
   "$schema": "https://ui.shadcn.com/schema.json",
   "style": "new-york",
   "rsc": true,
