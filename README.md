@@ -1,33 +1,54 @@
-# v0-web3-crypto-capabilities
+# BFFDex AI
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [v0](https://v0.app).
+**Voice-Verified Crypto Payments on Base** — by Dexter Vann
 
-## Built with v0
+BFFDex AI is an intelligent payment assistant that combines voice authentication, EIP-681 payment link parsing, on-chain attestations via EAS, and automatic QuickBooks expense logging into a single seamless interface.
 
-This repository is linked to a [v0](https://v0.app) project. You can continue developing by visiting the link below -- start new chats to make changes, and v0 will push commits directly to this repo. Every merge to `main` will automatically deploy.
+## Features
 
-[Continue working on v0 →](https://v0.app/chat/projects/prj_RDxZzqu5EOiiff4Hw5FMJhVBCkkj)
+- **Voice-Verified Payments** — Say "Armor up" to authorize transactions via ElevenLabs voice biometrics
+- **EIP-681 Payment Links** — Paste any `ethereum:` payment link and get a full preview before executing
+- **Base Chain** — All payments execute on Base (Coinbase's L2) using USDC
+- **QuickBooks Integration** — Automatic expense logging after every confirmed transaction
+- **EAS Attestations** — On-chain payment attestations via Ethereum Attestation Service
+- **Transaction History** — Full audit trail of all voice-verified payments
+
+## Tech Stack
+
+- **Framework:** Next.js 16 (App Router)
+- **Language:** TypeScript
+- **Styling:** Tailwind CSS v4 + shadcn/ui
+- **AI:** Vercel AI SDK with Anthropic Claude
+- **Web3:** ethers.js v6, EAS SDK
+- **Voice:** ElevenLabs Speech-to-Text + Voice Verification
+- **Analytics:** Vercel Analytics
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
+git clone https://github.com/dextervann1-rgb/BFF-Dex-AI.git
+cd BFF-Dex-AI
+npm install
+cp .env.example .env.local
+# Fill in your values in .env.local
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Environment Variables
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Variable | Description |
+|---|---|
+| `WALLET_PRIVATE_KEY` | Base wallet private key for signing transactions |
+| `ELEVENLABS_API_KEY` | ElevenLabs API key for voice verification |
+| `DEXTER_VOICE_ID` | Your ElevenLabs Voice ID for biometric auth |
+| `PAYMENT_SCHEMA_UID` | EAS schema UID for payment attestations |
+| `QUICKBOOKS_CLIENT_ID` | QuickBooks OAuth client ID |
+| `QUICKBOOKS_CLIENT_SECRET` | QuickBooks OAuth client secret |
 
-## Learn More
+## Security
 
-To learn more, take a look at the following resources:
+All payments require voice biometric verification. Never commit `.env.local` or any file containing private keys.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-- [v0 Documentation](https://v0.app/docs) - learn about v0 and how to use it.
+## License
+
+MIT — Built by Dexter Vann

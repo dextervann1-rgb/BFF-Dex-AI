@@ -6,6 +6,12 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  // Ensure API routes are always dynamic (never statically prerendered)
+  experimental: {
+    serverActions: {
+      allowedOrigins: ['*'],
+    },
+  },
 }
 
 export default nextConfig

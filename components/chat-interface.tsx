@@ -106,13 +106,13 @@ export function ChatInterface() {
       <form onSubmit={onSubmit} className="p-4 border-t border-border">
         <div className="flex gap-2">
           <Input
-            value={input}
+            value={input ?? ''}
             onChange={handleInputChange}
             placeholder="Paste EIP-681 link or ask a question..."
             className="flex-1 bg-secondary border-border"
             disabled={isLoading}
           />
-          <Button type="submit" disabled={isLoading || !input.trim()}>
+          <Button type="submit" disabled={isLoading || !(input ?? '').trim()}>
             <Send className="h-4 w-4" />
           </Button>
         </div>
