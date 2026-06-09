@@ -10,9 +10,7 @@ import { VoiceRecorder } from './voice-recorder';
 
 export function ChatInterface() {
   const [audioBase64, setAudioBase64] = useState<string>('');
-  const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
-    api: '/api/chat',
-  });
+  const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat() as any;
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,14 +60,15 @@ export function ChatInterface() {
                     return <p key={i} className="whitespace-pre-wrap">{part.text}</p>;
                   }
                   if (part.type === 'tool-invocation') {
+                    const toolInvocation = part.toolInvocation as any;
                     return (
-                      <ToolResultCard key={i} toolName={part.toolInvocation.toolName} result={part.toolInvocation.result} />
+                      <ToolResultCard key={i} toolName={toolInvocation.toolName} result={toolInvocation.result} />
                     );
                   }
                   return null;
                 })
               ) : (
-                <p className="whitespace-pre-wrap">{message.content}</p>
+                <p className="whitespace-pre-wrap">{(message as any).content}</p>
               )}
             </div>
           </div>
@@ -186,16 +185,16 @@ function ToolResultCard({ toolName, result }: { toolName: string; result: unknow
         <CardContent className="py-2 space-y-2">
           <p className="font-semibold">{String(data.sent)}</p>
           <p className="text-sm text-muted-foreground">{String(data.message)}</p>
-          {data.basescan && (
-            <a
-              href={String(data.basescan)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-            >
-              View on Basescan <ExternalLink className="h-3 w-3" />
-            </a>
-          )}
+              {data.basescan ? (
+                <a
+                  href={String(data.basescan)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                >
+                  View on Basescan <ExternalLink className="h-3 w-3" />
+                </a>
+              ) : null}
           <div className="flex gap-4 pt-2 text-xs">
             <span className={data.quickbooks_synced ? 'text-primary' : 'text-muted-foreground'}>
               QuickBooks: {data.quickbooks_synced ? 'Synced' : 'Not synced'}

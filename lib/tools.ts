@@ -106,7 +106,7 @@ export const payEip681 = tool({
             revocable: true,
           },
         });
-        attestationUid = attestTx;
+        attestationUid = await attestTx.wait();
       }
     } catch (err) {
       console.error('[BFFDex] EAS attestation failed:', err);
@@ -180,7 +180,7 @@ export const parseEip681 = tool({
   },
 });
 
-export const bffdexTools = {
+export const bffdexTools: any = {
   pay_eip681: payEip681,
   check_balance: checkBalance,
   parse_eip681: parseEip681,

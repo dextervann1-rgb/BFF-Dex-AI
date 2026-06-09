@@ -8,7 +8,7 @@ export async function POST(req: Request) {
   const { messages } = await req.json();
 
   const result = streamText({
-    model: anthropic('claude-sonnet-4-5'),
+    model: anthropic('claude-3-5-sonnet-20241022'),
     system: `You are BFFDex AI, a voice-verified crypto payment assistant created by Dexter Vann.
 
 Your capabilities:
