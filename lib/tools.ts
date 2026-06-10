@@ -4,6 +4,12 @@ import { ethers } from 'ethers';
 import { EAS, SchemaEncoder } from '@ethereum-attestation-service/eas-sdk';
 import { verifyVoiceAuthorization } from './voice';
 import { createQuickBooksExpense } from './quickbooks';
+import {
+  saveTransaction,
+  updateTransaction,
+  saveVoiceLog,
+  saveEasAttestation,
+} from './supabase';
 
 // Base Mainnet config
 const BASE_RPC = 'https://mainnet.base.org';
@@ -75,7 +81,37 @@ export const payEip681 = tool({
     const tx = await usdc.transfer(to, amountRaw);
     await tx.wait();
 
-    // 5. Log to QuickBooks
+    // 5. Save transaction to Supabase
+    const signerAddress = await signer.getAddress();
+    const savedTx = await saveTransaction({
+      amount,
+      token: tokenName,
+      from_address: signerAddress,
+      to_address: to,
+      tx_hash: tx.hash,
+      status: 'confirmed',
+      voice_verified: true,
+      voice_similarity: voice.similarity,
+      quickbooks_synced: false,
+      chain_id: chainId,
+      metadata: {
+        eip681_url: eip681_url,
+        verified_phrase: voice.text,
+      },
+    });
+
+    // 6. Save voice log
+    if (savedTx) {
+      await saveVoiceLog({
+        transaction_id: savedTx.id,
+        phrase_required: 'armor up',
+        phrase_spoken: voice.text,
+        similarity: voice.similarity,
+        verified: true,
+      });
+    }
+
+    // 7. Log to QuickBooks
     const qbResult = await createQuickBooksExpense({
       amount,
       vendor: to,
@@ -84,7 +120,15 @@ export const payEip681 = tool({
       txHash: tx.hash,
     });
 
-    // 6. EAS attest payment
+    // Update QB sync status in Supabase
+    if (savedTx) {
+      await updateTransaction(savedTx.id, {
+        quickbooks_synced: qbResult.success,
+        quickbooks_error: qbResult.error,
+      });
+    }
+
+    // 8. EAS attest payment
     let attestationUid: string | undefined;
     try {
       const eas = new EAS(EAS_CONTRACT);
@@ -112,9 +156,35 @@ export const payEip681 = tool({
           },
         });
         attestationUid = await attestTx.wait();
+
+        // Save attestation to Supabase
+        if (savedTx && attestationUid) {
+          await saveEasAttestation({
+            transaction_id: savedTx.id,
+            attestation_uid: attestationUid,
+            schema_uid: schemaUid,
+            recipient_address: signerAddress,
+            data: {
+              action: 'Voice-Verified Payment',
+              to,
+              amount: amountRaw,
+              token: tokenName,
+            },
+          });
+
+          // Update transaction with attestation UID
+          await updateTransaction(savedTx.id, {
+            attestation_uid: attestationUid,
+          });
+        }
       }
     } catch (err) {
       console.error('[BFFDex] EAS attestation failed:', err);
+      if (savedTx) {
+        await updateTransaction(savedTx.id, {
+          attestation_error: String(err),
+        });
+      }
     }
 
     return {

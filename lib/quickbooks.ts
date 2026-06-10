@@ -1,3 +1,5 @@
+import { getActiveQuickBooksToken } from './supabase';
+
 interface QuickBooksExpensePayload {
   amount: number;
   vendor: string;
@@ -13,8 +15,18 @@ export async function createQuickBooksExpense({
   category,
   txHash,
 }: QuickBooksExpensePayload): Promise<{ success: boolean; error?: string }> {
-  const realmId = process.env.QB_REALM_ID;
-  const accessToken = process.env.QB_ACCESS_TOKEN;
+  // Try to get tokens from Supabase first, fall back to env vars
+  let realmId = process.env.QB_REALM_ID;
+  let accessToken = process.env.QB_ACCESS_TOKEN;
+
+  // If not in env vars, try to fetch from Supabase
+  if (!realmId || !accessToken) {
+    const storedToken = await getActiveQuickBooksToken();
+    if (storedToken) {
+      realmId = storedToken.realm_id;
+      accessToken = storedToken.access_token;
+    }
+  }
 
   if (!realmId || !accessToken) {
     console.error('[BFFDex] QuickBooks not configured - missing credentials');

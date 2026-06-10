@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { saveQuickBooksToken } from '@/lib/supabase';
 
 const QB_TOKEN_URL = 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer';
 
@@ -66,21 +67,32 @@ export async function GET(req: NextRequest) {
 
     const tokens = await tokenResponse.json();
     
-    // IMPORTANT: Store these tokens in your Vercel environment variables
-    // After seeing the logs below, add these to your Vercel project settings:
-    // QB_REALM_ID={realmId}
-    // QB_ACCESS_TOKEN={tokens.access_token}
-    // QB_REFRESH_TOKEN={tokens.refresh_token}
-    // QB_VENDOR_ID and QB_EXPENSE_ACCOUNT_ID must be set manually in QB
-    
-    console.log('[BFFDex] ===== QUICKBOOKS OAUTH SUCCESS =====');
-    console.log('[BFFDex] Copy these values to Vercel environment variables:');
-    console.log('[BFFDex] QB_REALM_ID:', realmId);
-    console.log('[BFFDex] QB_ACCESS_TOKEN:', tokens.access_token);
-    console.log('[BFFDex] QB_REFRESH_TOKEN:', tokens.refresh_token);
-    console.log('[BFFDex] QB_TOKEN_TYPE:', tokens.token_type);
-    console.log('[BFFDex] QB_EXPIRES_IN:', tokens.expires_in);
-    console.log('[BFFDex] ===== END QUICKBOOKS OAUTH =====');
+    // Calculate expiration time
+    const expiresIn = tokens.expires_in || 3600; // Default to 1 hour
+    const expiresAt = new Date(Date.now() + expiresIn * 1000).toISOString();
+
+    // Save tokens to Supabase for automatic rotation
+    const savedToken = await saveQuickBooksToken({
+      realm_id: realmId,
+      access_token: tokens.access_token,
+      refresh_token: tokens.refresh_token,
+      token_type: tokens.token_type || 'Bearer',
+      expires_at: expiresAt,
+      is_active: true,
+    });
+
+    if (savedToken) {
+      console.log('[BFFDex] ===== QUICKBOOKS OAUTH SUCCESS =====');
+      console.log('[BFFDex] Tokens saved to Supabase automatically!');
+      console.log('[BFFDex] Realm ID:', realmId);
+      console.log('[BFFDex] Token expires at:', expiresAt);
+      console.log('[BFFDex] ===== END QUICKBOOKS OAUTH =====');
+    } else {
+      console.warn('[BFFDex] Tokens saved but Supabase storage failed. Showing tokens in logs:');
+      console.log('[BFFDex] QB_REALM_ID:', realmId);
+      console.log('[BFFDex] QB_ACCESS_TOKEN:', tokens.access_token);
+      console.log('[BFFDex] QB_REFRESH_TOKEN:', tokens.refresh_token);
+    }
     
     // Clear the state cookie
     const response = NextResponse.redirect(
