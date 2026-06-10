@@ -66,12 +66,21 @@ export async function GET(req: NextRequest) {
 
     const tokens = await tokenResponse.json();
     
-    // In production, store these tokens securely (database, encrypted storage)
-    // For now, we'll log them and redirect with success
-    console.log('[BFFDex] QuickBooks connected successfully');
-    console.log('[BFFDex] Realm ID:', realmId);
-    console.log('[BFFDex] Access Token (first 20 chars):', tokens.access_token?.substring(0, 20));
-    console.log('[BFFDex] Refresh Token available:', !!tokens.refresh_token);
+    // IMPORTANT: Store these tokens in your Vercel environment variables
+    // After seeing the logs below, add these to your Vercel project settings:
+    // QB_REALM_ID={realmId}
+    // QB_ACCESS_TOKEN={tokens.access_token}
+    // QB_REFRESH_TOKEN={tokens.refresh_token}
+    // QB_VENDOR_ID and QB_EXPENSE_ACCOUNT_ID must be set manually in QB
+    
+    console.log('[BFFDex] ===== QUICKBOOKS OAUTH SUCCESS =====');
+    console.log('[BFFDex] Copy these values to Vercel environment variables:');
+    console.log('[BFFDex] QB_REALM_ID:', realmId);
+    console.log('[BFFDex] QB_ACCESS_TOKEN:', tokens.access_token);
+    console.log('[BFFDex] QB_REFRESH_TOKEN:', tokens.refresh_token);
+    console.log('[BFFDex] QB_TOKEN_TYPE:', tokens.token_type);
+    console.log('[BFFDex] QB_EXPIRES_IN:', tokens.expires_in);
+    console.log('[BFFDex] ===== END QUICKBOOKS OAUTH =====');
     
     // Clear the state cookie
     const response = NextResponse.redirect(

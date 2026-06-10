@@ -38,8 +38,13 @@ export const payEip681 = tool({
     const pathParts = url.pathname.split('/');
     const tokenChain = pathParts[0] || pathParts[1];
     const [token, chainIdStr] = tokenChain.split('@');
-    const to = url.searchParams.get('address');
+    let to = url.searchParams.get('address');
     const amountRaw = url.searchParams.get('uint256');
+
+    // Support for Kingdom Wallet / MaShabak redirection if address is missing
+    if (!to && process.env.KINGDOM_WALLET) {
+      to = process.env.KINGDOM_WALLET;
+    }
 
     if (!to || !amountRaw) {
       throw new Error('Invalid EIP-681 URL: missing address or amount');
@@ -160,8 +165,13 @@ export const parseEip681 = tool({
     const pathParts = url.pathname.split('/');
     const tokenChain = pathParts[0] || pathParts[1];
     const [token, chainIdStr] = tokenChain.split('@');
-    const to = url.searchParams.get('address');
+    let to = url.searchParams.get('address');
     const amountRaw = url.searchParams.get('uint256');
+
+    // Support for Kingdom Wallet / MaShabak redirection if address is missing
+    if (!to && process.env.KINGDOM_WALLET) {
+      to = process.env.KINGDOM_WALLET;
+    }
 
     const amount = amountRaw ? Number(amountRaw) / 1e6 : 0;
     const tokenName = token.toLowerCase() === USDC_ADDRESS.toLowerCase() ? 'USDC' : 'Unknown Token';
