@@ -1,0 +1,90 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# ÒMEGA⁸ Continuous Task Runner
+# Designed by Dexter Lamar Vann — Vann Family Ventures LLC
+# Extension:.pydex — Python Dexter Extended
+# This is a project-internal task DSL, NOT an accredited language standard.
+
+import json, os, sys, time
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+
+TASKS = {
+    "1": {
+        "name": "env_sync",
+        "target": ROOT / ".env.local",
+        "action": "validate_env_keys",
+        "keys": ["NEXT_PUBLIC_SUPABASE_URL","NEXT_PUBLIC_SUPABASE_ANON_KEY","OPENAI_API_KEY","STRIPE_SECRET_KEY"]
+    },
+    "2": {
+        "name": "toolbar_options",
+        "target": ROOT / "config" / "toolbar.json",
+        "action": "write_json",
+        "payload": {
+            "tools": ["verify_deed","draft_llc","notarize","close"],
+            "permissions": ["read","write_human_approved","submit_escrow"],
+            "mode": "human_in_loop"
+        }
+    },
+    "3": {
+        "name": "api_route_scaffold",
+        "target": ROOT / "app" / "api",
+        "action": "ensure_routes",
+        "routes": ["health","verify-deed","draft-llc","kyc-start","notarize-start","close-submit"]
+    }
+}
+
+def validate_env_keys(keys, target):
+    env = {}
+    if target.exists():
+        for line in target.read_text().splitlines():
+            if "=" in line and not line.startswith("#"):
+                k,v = line.split("=",1)
+                env[k.strip()] = v
+    missing = [k for k in keys if k not in env or not env[k]]
+    print(f"[env_sync] missing: {missing if missing else 'none'}")
+    return len(missing) == 0
+
+def write_json(target, payload):
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(payload, indent=2))
+    print(f"[write] {target}")
+
+def ensure_routes(target, routes):
+    for r in routes:
+        p = target / r / "route.ts"
+        p.parent.mkdir(parents=True, exist_ok=True)
+        if not p.exists():
+            p.write_text(f'// ÒMEGA⁸ — {r}\nexport async function GET() {{ return Response.json({{status:"ÒMEGA⁸ LIVE", route:"{r}"}}) }}\n')
+            print(f"[scaffold] {p}")
+
+ACTIONS = {
+    "validate_env_keys": validate_env_keys,
+    "write_json": lambda **kw: write_json(kw["target"], kw["payload"]),
+    "ensure_routes": lambda **kw: ensure_routes(kw["target"], kw["routes"])
+}
+
+def run_task(t):
+    fn = ACTIONS[t["action"]]
+    if t["action"] == "validate_env_keys":
+        return fn(t["keys"], t["target"])
+    if t["action"] == "write_json":
+        return fn(target=t["target"], payload=t["payload"])
+    if t["action"] == "ensure_routes":
+        return fn(target=t["target"], routes=t["routes"])
+
+if __name__ == "__main__":
+    mode = sys.argv[2] if len(sys.argv) > 2 else "once"
+    print("ÒMEGA⁸ Runner — Dexter Lamar Vann / Vann Family Ventures LLC")
+    for tid in ["1","2","3"]:
+        t = TASKS[tid]
+        print(f"→ Task {tid}: {t['name']} → {t['target']}")
+        run_task(t)
+    if "--continuous" in sys.argv:
+        print("Continuous mode: watching every 60s. Ctrl+C to stop.")
+        while True:
+            time.sleep(60)
+            for tid in ["1","2","3"]:
+                run_task(TASKS[tid])
+    print("CHUCHHH. Tasks dispatched.")

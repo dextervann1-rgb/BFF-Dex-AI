@@ -1,0 +1,11 @@
+{
+  "actor": "omega8_agent",
+  "scopes": {
+    "verify_deed.read": {"autonomous": true},
+    "draft_llc.write": {"autonomous": false, "human_gate": true},
+    "kyc.verify": {"autonomous": true, "provider": "persona.com"},
+    "notarize.submit": {"autonomous": false, "human_gate": true, "provider": "proof.com"},
+    "close.settle": {"autonomous": false, "human_gate": true, "requires": ["title_clear","kyc_pass","notary_complete","funds_cleared"]}
+  },
+  "attribution": "Designed by Dexter Lamar Vann — Vann Family Ventures LLC"
+}
