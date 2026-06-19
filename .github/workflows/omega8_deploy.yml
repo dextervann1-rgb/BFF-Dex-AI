@@ -83,3 +83,7 @@ jobs:
           python-version: '3.11'
       - run: pip install pyyaml python-dotenv
       - run: python tools/omega8_runner.pydex --mode post-deploy
+      - name: Set Agent Live Status
+        run: |
+          echo "AGENT_STATUS=LIVE" >> $GITHUB_ENV
+          echo "ÒMEGA⁸ Agent is now live and dispatched."
