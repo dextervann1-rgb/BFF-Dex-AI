@@ -1,0 +1,14 @@
+{
+  "tools": [
+    "verify_deed",
+    "draft_llc",
+    "notarize",
+    "close"
+  ],
+  "permissions": [
+    "read",
+    "write_human_approved",
+    "submit_escrow"
+  ],
+  "mode": "human_in_loop"
+}
