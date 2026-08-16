@@ -26,6 +26,14 @@ function getSigner() {
   return new ethers.Wallet(privateKey, getProvider());
 }
 
+function requireTransactionSigningEnabled() {
+  if (process.env.BFFDEX_TRANSACTION_SIGNING_ENABLED !== 'true') {
+    throw new Error(
+      'Transaction execution is disabled. Set BFFDEX_TRANSACTION_SIGNING_ENABLED=true only after completing wallet custody, testnet rehearsal, and approval checks.'
+    );
+  }
+}
+
 export const payEip681 = tool({
   description: 'Parse Base EIP-681 payment link, show details, execute after voice confirm',
   parameters: z.object({
@@ -33,6 +41,9 @@ export const payEip681 = tool({
     audio_base64: z.string().describe('User saying "Armor up" to confirm'),
   }),
   execute: async ({ eip681_url, audio_base64 }) => {
+    // Live transfers are intentionally disabled unless explicitly enabled in the server environment.
+    requireTransactionSigningEnabled();
+
     // 1. Voice gate - mandatory for any send
     const voice = await verifyVoiceAuthorization(audio_base64, 'armor up');
     if (!voice.verified) {
@@ -47,28 +58,35 @@ export const payEip681 = tool({
     let to = url.searchParams.get('address');
     const amountRaw = url.searchParams.get('uint256');
 
-    // Support for Kingdom Wallet / MaShabak redirection if address is missing
-    if (!to && process.env.KINGDOM_WALLET) {
-      to = process.env.KINGDOM_WALLET;
-    }
-
     if (!to || !amountRaw) {
-      throw new Error('Invalid EIP-681 URL: missing address or amount');
+      throw new Error('Invalid EIP-681 URL: an explicit recipient address and amount are required');
+    }
+    if (!ethers.isAddress(to)) {
+      throw new Error('Invalid EIP-681 URL: recipient is not a valid address');
+    }
+    if (!ethers.isAddress(token) || token.toLowerCase() !== USDC_ADDRESS.toLowerCase()) {
+      throw new Error('Only the canonical Base USDC contract is supported');
+    }
+    if (!/^\d+$/.test(amountRaw)) {
+      throw new Error('Invalid EIP-681 URL: amount must be an integer number of USDC base units');
     }
 
-    // USDC = 6 decimals
-    const amount = Number(amountRaw) / 1e6;
-    const tokenName = token.toLowerCase() === USDC_ADDRESS.toLowerCase() ? 'USDC' : 'Unknown Token';
-    const chainId = chainIdStr ? parseInt(chainIdStr) : 8453; // Default to Base
-
+    const chainId = chainIdStr ? parseInt(chainIdStr, 10) : 8453;
     if (chainId !== 8453) {
       throw new Error('Only Base chain (8453) is supported');
     }
 
-    // 3. Safety check: $500 max without 2FA
-    if (amount > 500) {
-      throw new Error('Amount >$500. Requires 2FA. Contact Dexter.');
+    const amountUnits = BigInt(amountRaw);
+    const maxWithoutAdditionalApproval = 500_000_000n; // 500 USDC at six decimals
+    if (amountUnits <= 0n) {
+      throw new Error('Payment amount must be greater than zero');
     }
+    if (amountUnits > maxWithoutAdditionalApproval) {
+      throw new Error('Amount exceeds the $500 execution limit and requires a separate approved flow.');
+    }
+    const recipient = ethers.getAddress(to);
+    const amount = Number(amountUnits) / 1e6;
+    const tokenName = 'USDC';
 
     // 4. Execute transfer
     const signer = getSigner();
@@ -78,7 +96,7 @@ export const payEip681 = tool({
       signer
     );
     
-    const tx = await usdc.transfer(to, amountRaw);
+    const tx = await usdc.transfer(recipient, amountUnits);
     await tx.wait();
 
     // 5. Save transaction to Supabase
@@ -87,7 +105,7 @@ export const payEip681 = tool({
       amount,
       token: tokenName,
       from_address: signerAddress,
-      to_address: to,
+      to_address: recipient,
       tx_hash: tx.hash,
       status: 'confirmed',
       voice_verified: true,
@@ -114,7 +132,7 @@ export const payEip681 = tool({
     // 7. Log to QuickBooks
     const qbResult = await createQuickBooksExpense({
       amount,
-      vendor: to,
+      vendor: recipient,
       memo: 'Voice-approved via BFFDex AI',
       category: 'MaShabak Ops',
       txHash: tx.hash,
@@ -141,8 +159,8 @@ export const payEip681 = tool({
         );
         const encoded = schemaEncoder.encodeData([
           { name: 'action', value: 'Voice-Verified Payment', type: 'string' },
-          { name: 'to', value: to, type: 'address' },
-          { name: 'amount', value: BigInt(amountRaw), type: 'uint256' },
+          { name: 'to', value: recipient, type: 'address' },
+          { name: 'amount', value: amountUnits, type: 'uint256' },
           { name: 'token', value: tokenName, type: 'string' },
         ]);
 
@@ -166,8 +184,8 @@ export const payEip681 = tool({
             recipient_address: signerAddress,
             data: {
               action: 'Voice-Verified Payment',
-              to,
-              amount: amountRaw,
+              to: recipient,
+              amount: amountUnits.toString(),
               token: tokenName,
             },
           });
@@ -190,7 +208,7 @@ export const payEip681 = tool({
     return {
       success: true,
       sent: `${amount} ${tokenName}`,
-      to_address: to,
+      to_address: recipient,
       tx_hash: tx.hash,
       basescan: `https://basescan.org/tx/${tx.hash}`,
       attestation_uid: attestationUid,
@@ -238,24 +256,23 @@ export const parseEip681 = tool({
     let to = url.searchParams.get('address');
     const amountRaw = url.searchParams.get('uint256');
 
-    // Support for Kingdom Wallet / MaShabak redirection if address is missing
-    if (!to && process.env.KINGDOM_WALLET) {
-      to = process.env.KINGDOM_WALLET;
-    }
-
-    const amount = amountRaw ? Number(amountRaw) / 1e6 : 0;
-    const tokenName = token.toLowerCase() === USDC_ADDRESS.toLowerCase() ? 'USDC' : 'Unknown Token';
-    const chainId = chainIdStr ? parseInt(chainIdStr) : 8453;
+    const chainId = chainIdStr ? parseInt(chainIdStr, 10) : 8453;
+    const amountUnits = amountRaw && /^\d+$/.test(amountRaw) ? BigInt(amountRaw) : null;
+    const supportedToken = ethers.isAddress(token) && token.toLowerCase() === USDC_ADDRESS.toLowerCase();
+    const validRecipient = Boolean(to && ethers.isAddress(to));
+    const validAmount = Boolean(amountUnits && amountUnits > 0n);
 
     return {
       token_address: token,
-      token_name: tokenName,
+      token_name: supportedToken ? 'USDC' : 'Unsupported token',
       recipient: to,
-      amount,
+      amount: amountUnits ? Number(amountUnits) / 1e6 : 0,
       chain_id: chainId,
-      chain_name: chainId === 8453 ? 'Base' : 'Unknown',
+      chain_name: chainId === 8453 ? 'Base' : 'Unsupported chain',
       requires_voice: true,
-      max_without_2fa: 500,
+      execution_enabled: process.env.BFFDEX_TRANSACTION_SIGNING_ENABLED === 'true',
+      executable: supportedToken && validRecipient && validAmount && chainId === 8453 && amountUnits! <= 500_000_000n,
+      max_without_additional_approval: 500,
     };
   },
 });
